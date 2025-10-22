@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+  <title>WebGIS Natuna Interactive</title>
+
+  <link rel="stylesheet" href="resources/ol.css">
+  <link rel="stylesheet" href="resources/fontawesome-all.min.css">
+  <link rel="stylesheet" href="resources/ol-layerswitcher.css">
+  <link rel="stylesheet" href="resources/qgis2web.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body, #map { margin:0; padding:0; width:100%; height:100%; font-family:'Poppins',sans-serif; background:#f9fafb; }
+
+    .toolbar {
+      position:absolute; top:15px; left:15px; z-index:1000;
+      background:rgba(255,255,255,0.9); border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      padding:10px 15px; display:flex; align-items:center; gap:10px;
+    }
+    .toolbar i { color:#444; cursor:pointer; }
+    .toolbar input { border:none; outline:none; background:transparent; font-size:14px; width:160px; }
+
+    .layer-card {
+      position:absolute; top:70px; left:15px; width:230px; z-index:999;
+      background:rgba(255,255,255,0.95); border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1);
+      padding:12px 15px; overflow-y:auto; max-height:280px;
+    }
+    .layer-card strong { display:block; margin-bottom:8px; font-size:15px; }
+    .layer-item { margin:5px 0; font-size:13px; }
+
+    .bottom-tools {
+      position:absolute; bottom:15px; right:15px; z-index:1000;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .btn-tool {
+      background:rgba(255,255,255,0.9); border-radius:10px; box-shadow:0 3px 8px rgba(0,0,0,0.2);
+      padding:8px 12px; cursor:pointer; font-size:14px; color:#333;
+      display:flex; align-items:center; gap:6px; transition:all 0.2s ease;
+    }
+    .btn-tool:hover { background:#f0f0f0; transform:scale(1.05); }
+
+    .dark-mode { background:#1e1e1e; color:#eee; }
+    .dark-mode .toolbar { background:rgba(40,40,40,0.9); }
+    .dark-mode .layer-card { background:rgba(50,50,50,0.9); }
+  </style>
+</head>
+
+<body>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <i class="fas fa-search"></i>
+    <input type="text" placeholder="Cari lokasi..." id="searchBox" />
+    <i class="fas fa-moon dark-toggle" title="Dark Mode"></i>
+  </div>
+
+  <!-- Layer Control -->
+  <div class="layer-card" id="layerCard">
+    <strong>🗺️ Layer Control</strong>
+    <div class="layer-item"><input type="checkbox" id="layer1" checked> Zona Layer Natuna</div>
+    <div class="layer-item"><input type="checkbox" id="layer2" checked> Ranai Kota 2022</div>
+    <div class="layer-item"><input type="checkbox" id="layer3" checked> Batu Hitam 2023</div>
+    <div class="layer-item"><input type="checkbox" id="layer4" checked> Bandarsyah 2024</div>
+    <div class="layer-item"><input type="checkbox" id="layer5" checked> Ranai Darat 2025</div>
+    <div class="layer-item"><input type="checkbox" id="layer6" checked> Jaringan Jalan</div>
+  </div>
+
+  <!-- Tombol bawah -->
+  <div class="bottom-tools">
+    <div class="btn-tool" id="measureBtn"><i class="fas fa-ruler"></i> Ukur</div>
+    <div class="btn-tool" id="labelToggle"><i class="fas fa-tags"></i> Label: ON</div>
+  </div>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Load QGIS2Web scripts -->
+  <script src="resources/qgis2web_expressions.js"></script>
+  <script src="resources/functions.js"></script>
+  <script src="resources/ol.js"></script>
+  <script src="resources/ol-layerswitcher.js"></script>
+  <script src="resources/Autolinker.min.js"></script>
+
+  <!-- Layer data -->
+  <script src="layers/ZonaLayerNatuna_1.js"></script>
+  <script src="layers/RanaiKota2022_2.js"></script>
+  <script src="layers/BatuHitam2023_3.js"></script>
+  <script src="layers/Bandarsyah2024_4.js"></script>
+  <script src="layers/RanaiDarat2025_5.js"></script>
+  <script src="layers/Jaringan_Jalan_6.js"></script>
+  <script src="styles/ZonaLayerNatuna_1_style.js"></script>
+  <script src="styles/RanaiKota2022_2_style.js"></script>
+  <script src="styles/BatuHitam2023_3_style.js"></script>
+  <script src="styles/Bandarsyah2024_4_style.js"></script>
+  <script src="styles/RanaiDarat2025_5_style.js"></script>
+  <script src="styles/Jaringan_Jalan_6_style.js"></script>
+  <script src="layers/layers.js"></script>
+  <script src="resources/qgis2web.js"></script>
+
+  <!-- Custom interactivity -->
+  <script>
+    window.addEventListener('load', () => {
+      // ✅ Pastikan semua layer sudah terdefinisi
+      const layersList = [
+        window.layer_ZonaLayerNatuna_1,
+        window.layer_RanaiKota2022_2,
+        window.layer_BatuHitam2023_3,
+        window.layer_Bandarsyah2024_4,
+        window.layer_RanaiDarat2025_5,
+        window.layer_Jaringan_Jalan_6
+      ];
+
+      // 🌗 Dark Mode toggle
+      const toggle = document.querySelector('.dark-toggle');
+      toggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        toggle.classList.toggle('fa-sun');
+        toggle.classList.toggle('fa-moon');
+      });
+
+      // 🗺️ Layer Visibility Control
+      for (let i = 1; i <= 6; i++) {
+        const checkbox = document.getElementById('layer' + i);
+        if (checkbox && layersList[i - 1]) {
+          checkbox.addEventListener('change', (e) => {
+            layersList[i - 1].setVisible(e.target.checked);
+          });
+        }
+      }
+
+      // 🏷️ Label toggle
+      let labelOn = true;
+      document.getElementById('labelToggle').addEventListener('click', () => {
+        labelOn = !labelOn;
+        document.getElementById('labelToggle').innerHTML = `<i class="fas fa-tags"></i> Label: ${labelOn ? 'ON' : 'OFF'}`;
+
+        // Untuk menonaktifkan label: ubah style function sementara
+        layersList.forEach(layer => {
+          if (layer && typeof layer.setStyle === 'function') {
+            const source = layer.getSource();
+            const originalStyle = layer.getStyle();
+
+            if (labelOn) {
+              layer.setStyle(originalStyle); // kembalikan style asli
+            } else {
+              layer.setStyle(feature => {
+                const s = originalStyle(feature);
+                // Hilangkan text label (jika ada)
+                if (Array.isArray(s)) {
+                  s.forEach(st => st.setText(null));
+                } else if (s && s.getText) {
+                  s.setText(null);
+                }
+                return s;
+              });
+            }
+          }
+        });
+      });
+
+      // 📏 Dummy measure button
+      document.getElementById('measureBtn').addEventListener('click', () => {
+        alert('Mode ukur aktif. (Fungsi pengukuran bisa ditambahkan menggunakan ol.interaction.Draw)');
+      });
+
+      // 🔍 Dummy search
+      document.getElementById('searchBox').addEventListener('keypress', e => {
+        if (e.key === 'Enter') alert('Pencarian "' + e.target.value + '" belum dihubungkan ke Photon API.');
+      });
+    });
+  </script>
+</body>
+</html>
